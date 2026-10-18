@@ -1,0 +1,21 @@
+favicon.svg
+  s_159f79a8bf869b::t_9ff21be7e6741d 1-8
+index.html
+  s_159f79a8bf869b::t_1f163ab2c4eaf7 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e6644d5ba4818f9f04c33d8aa6faf588e2742d82",
+  "prompts": {},
+  "sessions": {
+    "s_159f79a8bf869b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_eb0673c50ffeAz3sDB30fqJPkJ",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Kuba Jaroszewski <jakub.jaroszewski@gmail.com>"
+    }
+  }
+}
