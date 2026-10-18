@@ -1,0 +1,19 @@
+game/snake.js
+  s_ae4d7af5005509::t_aa6e1612d17758 112-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2efbaa7cb93a6c8851ab673a0c4372db803a7847",
+  "prompts": {},
+  "sessions": {
+    "s_ae4d7af5005509": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_eb062aa28ffe4d8l9a6hOAxWid",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Kuba Jaroszewski <jakub.jaroszewski@gmail.com>"
+    }
+  }
+}
