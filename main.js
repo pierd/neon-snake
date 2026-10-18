@@ -20,6 +20,14 @@ let tickTimer = 0, shake = 0, overT = 0, hoverMode = null;
 const bursts = [];
 const best = { triangle: 0, square: 0, hexagon: 0 };
 
+// Touch controls: always on for touch-first devices, opt-in on desktop
+// (not persisted). Touch devices are asked to play in landscape.
+const touchDevice = matchMedia("(hover: none) and (pointer: coarse)").matches;
+const landscapeQuery = matchMedia("(orientation: landscape)");
+let touchToggle = false;
+const touchOn = () => touchDevice || touchToggle;
+const needsRotate = () => touchDevice && !landscapeQuery.matches;
+
 function makeBurst(c, p = {}) {
   const n = 28;
   const geo = new THREE.BufferGeometry();
@@ -70,6 +78,9 @@ function fitCamera(ctx) {
 function setState(ctx, s) {
   state = s;
   select.visible = s === "menu";
+  hoverMode = null;
+  hud.highlight(null);
+  if (s !== "menu") ctx.renderer.domElement.style.cursor = "";
   for (const m of MODES) arenas[m].group.visible = s !== "menu" && m === mode;
   hud.show(s, mode);
   music.setMode(s);
@@ -86,6 +97,25 @@ function startGame(ctx, m) {
   tickTimer = 0;
   setState(ctx, "play");
   arenas[m].setSnake(game.snake, game.food, true, game.heading);
+  // Started in portrait: hold the run until the device is turned.
+  if (needsRotate()) setState(ctx, "pause");
+}
+
+function pauseGame(ctx) {
+  if (state !== "play") return;
+  sfx.select();
+  setState(ctx, "pause");
+}
+
+function resumeGame(ctx) {
+  if (state !== "pause" || needsRotate()) return;
+  sfx.select();
+  setState(ctx, "play");
+}
+
+function syncTouch(ctx) {
+  hud.setTouch({ enabled: touchOn(), device: touchDevice, landscape: landscapeQuery.matches });
+  if (needsRotate() && state === "play") setState(ctx, "pause");
 }
 
 function publish(ctx) {
@@ -117,8 +147,20 @@ export function start(ctx) {
     onPick: (m) => startGame(ctx, m),
     onRetry: () => state === "over" && startGame(ctx, mode),
     onMenu: () => { sfx.select(); setState(ctx, "menu"); },
-    onHover: (m) => { hoverMode = m; sfx.hover(); },
+    onHover: (m) => { hoverMode = m; hud.highlight(m); sfx.hover(); },
+    onTurn: (dir) => { if (state === "play" && game.turn(dir)) sfx.turn(); },
+    onPause: () => pauseGame(ctx),
+    onResume: () => resumeGame(ctx),
+    onToggleTouch: () => {
+      touchToggle = !touchToggle;
+      sfx.select();
+      syncTouch(ctx);
+      hud.toast("TOUCH CONTROLS " + (touchToggle ? "ON" : "OFF"));
+    },
   });
+  syncTouch(ctx);
+  bindPreviewClicks(ctx);
+  landscapeQuery.addEventListener("change", () => syncTouch(ctx));
 
   const size = new THREE.Vector2();
   ctx.renderer.getSize(size);
@@ -171,6 +213,10 @@ function handleInput(ctx) {
     return;
   }
   if (inp.wasPressed("Escape")) { sfx.select(); setState(ctx, "menu"); return; }
+  if (state === "pause") {
+    if (inp.wasPressed("Space") || inp.wasPressed("Enter")) resumeGame(ctx);
+    return;
+  }
   if (state === "over") {
     if (overT > 0.4 && (inp.wasPressed("Space") || inp.wasPressed("Enter"))) startGame(ctx, mode);
     return;
@@ -275,7 +321,9 @@ export function update(dt, ctx) {
   // Camera: gentle parallax over the background maps, plus shake.
   const z = fitCamera(ctx);
   const k = 1 - Math.exp(-4 * dt);
-  const px = ctx.input.pointer.x * 2.5, py = ctx.input.pointer.y * 1.5;
+  // No parallax with touch controls: taps would jerk the camera around.
+  const par = touchOn() ? 0 : 1;
+  const px = ctx.input.pointer.x * 2.5 * par, py = ctx.input.pointer.y * 1.5 * par;
   cam.position.x += (px - cam.position.x) * k;
   cam.position.y += (py - cam.position.y) * k;
   cam.position.z += (z - cam.position.z) * k;
@@ -285,16 +333,48 @@ export function update(dt, ctx) {
   cam.position.x += (Math.random() - 0.5) * s;
   cam.position.y += (Math.random() - 0.5) * s;
 
-  // Keep menu buttons under their previews.
+  // Keep menu buttons under their previews, and track each preview's
+  // on-screen rectangle so the board itself can be clicked.
   if (state === "menu") {
     const v = new THREE.Vector3();
     const w = ctx.renderer.domElement.clientWidth, h = ctx.renderer.domElement.clientHeight;
+    const toScreen = (x, y) => (v.set(x, y, 0).project(cam), [(v.x * 0.5 + 0.5) * w, (-v.y * 0.5 + 0.5) * h]);
     for (const p of previews) {
       const board = getBoard(p.mode);
-      v.set(p.group.position.x, -(board.height * PREVIEW_SCALE) / 2 - 1.2, 0).project(cam);
-      hud.placeButton(p.mode, (v.x * 0.5 + 0.5) * w, (-v.y * 0.5 + 0.5) * h);
+      const [bx, by] = toScreen(p.group.position.x, -(board.height * PREVIEW_SCALE) / 2 - 1.2);
+      hud.placeButton(p.mode, bx, by);
+      const hw = (board.width * PREVIEW_SCALE) / 2, hh = (board.height * PREVIEW_SCALE) / 2;
+      const [x0, y0] = toScreen(p.group.position.x - hw, hh);
+      const [x1, y1] = toScreen(p.group.position.x + hw, -hh);
+      p.rect = { x0, y0, x1, y1 };
     }
   }
+}
+
+function previewAt(event) {
+  const r = event.currentTarget.getBoundingClientRect();
+  const x = event.clientX - r.left, y = event.clientY - r.top;
+  const p = previews.find((q) => q.rect && x >= q.rect.x0 && x <= q.rect.x1 && y >= q.rect.y0 && y <= q.rect.y1);
+  return p ? p.mode : null;
+}
+
+function bindPreviewClicks(ctx) {
+  const canvas = ctx.renderer.domElement;
+  canvas.addEventListener("click", (e) => {
+    if (state !== "menu") return;
+    const m = previewAt(e);
+    if (m) startGame(ctx, m);
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (state !== "menu" || e.pointerType === "touch") return;
+    const m = previewAt(e);
+    canvas.style.cursor = m ? "pointer" : "";
+    if (m !== hoverMode) {
+      hoverMode = m;
+      hud.highlight(m);
+      if (m) sfx.hover();
+    }
+  });
 }
 
 export function render(ctx) {

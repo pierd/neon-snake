@@ -116,7 +116,7 @@ export function createBackground(ctx) {
         if (!e) continue;
       }
       e.view.setSnake(st.s || [], st.f ?? -1, st.a !== false, st.h || 0);
-      const status = st.st === "menu" ? " · MENU" : st.a === false ? " · DEREZZED" : "";
+      const status = st.st === "menu" ? " · MENU" : st.a === false ? " · DEREZZED" : st.st === "pause" ? " · PAUSED" : "";
       e.view.label.userData.set((p.name || "PLAYER").toUpperCase().slice(0, 14) + "  " + (st.sc || 0) + status, p.color);
     }
     for (const e of [...entries.values()]) if (!e.ai && !live.has(e.key)) remove(e);

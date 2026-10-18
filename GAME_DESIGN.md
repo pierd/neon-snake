@@ -20,7 +20,9 @@ A 2D Tron-style neon snake game where you pick the grid's shape — triangle, sq
 - Up to 3 turns are buffered, and one is applied per step. A chevron on the head shows the current heading.
 - Camera: top-down perspective with slight mouse parallax; shakes on death and on eating.
 - Glow: [ / ] (or - / =) lower or raise the bloom strength (default 55%, range 0–200%) at any time.
-- Menu: keys 1/2/3 or click. During play, Esc goes to the menu. On game over, Space/Enter retries.
+- Menu: keys 1/2/3, or click/tap either a board preview or the button under it (hovering a preview enlarges it). During play, Esc goes to the menu. On game over, Space/Enter retries.
+- Touch controls: on by default on touch-first devices (`hover: none` + `pointer: coarse`); on desktop a TOUCH CONTROLS button at the bottom of the menu turns them on (not remembered). Shown only in landscape: the left ~18% of the screen turns left, the right ~18% turns right (relative turns in every mode, including square). In hexagon each side is split: top = 60° turn, bottom = sharp 120° turn. Tapping the invisible center area pauses (PAUSED panel with Resume / Menu; Space/Enter resume, Esc goes to the menu). Mouse parallax is off while touch controls are on.
+- Portrait on a touch device: the menu shows a small "rotate your device" hint; during play a full-screen ROTATE YOUR DEVICE overlay appears and the run pauses until the device is in landscape and the player taps Resume.
 
 ## Rules
 - Start: 4 cells long at the board centre, heading east.
@@ -29,7 +31,7 @@ A 2D Tron-style neon snake game where you pick the grid's shape — triangle, sq
 
 ## Multiplayer
 - Play is single-player; there is no shared game state and no host logic.
-- Each player publishes their own board via `setState`: mode, snake cell ids, food cell, alive flag, heading, score, and menu/play status.
+- Each player publishes their own board via `setState`: mode, snake cell ids, food cell, alive flag, heading, score, and menu/play/pause status.
 - Every client draws other players' boards as small maps far below the arena, labelled with their name and score in their colour.
 - Empty background slots (minimum 10 maps) are filled with locally simulated AI demo snakes labelled "AI".
 
@@ -48,15 +50,17 @@ A 2D Tron-style neon snake game where you pick the grid's shape — triangle, sq
 ## UI/HUD
 - Menu: NEON SNAKE title, three live AI-played board previews with neon buttons under each.
 - Play: mode, score, and length top-left; best score and players online top-right; control hint at the bottom.
+- Touch: subtle side zones (a thin inner edge line and faint chevrons in the mode color, flashing on tap); double chevrons mark sharp turns.
+- Pause: PAUSED panel with Resume and Menu.
 - Game over: DEREZZED panel with score, best, Retry, and Menu.
 
 ## Code Map
-- `main.js` — game states (menu, play, over), input, tick timing, camera, bloom, spark bursts, net publishing.
+- `main.js` — game states (menu, play, pause, over), input, touch-control and orientation state, tick timing, camera, bloom, spark bursts, net publishing.
 - `game/boards.js` — board generation for the 3 shapes, edge adjacency, `nextCell` movement.
 - `game/snake.js` — snake rules (turn, steer, tick, food) and the greedy AI.
 - `game/boardView.js` — neon rendering of a board, snake, heading chevron, and food; per-mode palettes.
 - `game/background.js` — background maps of other players and AI demos, with name labels.
-- `game/hud.js` — HTML menu, HUD, and game-over overlay.
+- `game/hud.js` — HTML menu, HUD, touch steering zones, rotate prompt, and pause / game-over overlays.
 - `game/audio.js` — shared AudioContext and synthesized sound effects.
 - `game/music.js` — procedural music sequencer and its mode/intensity layers.
 - `world/backdrop.js` — backdrop grid, dust, and arena glow.
