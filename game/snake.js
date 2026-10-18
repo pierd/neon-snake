@@ -109,7 +109,9 @@ export class SnakeGame {
     const f = this.board.cells[this.food];
     const need = Math.min(this.snake.length + 4, 60);
     let best = null, bestScore = -Infinity;
-    for (const d of [0, 1, -1]) {
+    // Hexagon also allows sharp 120° turns, like the player's Z/C keys.
+    const dirs = this.board.mode === "hexagon" ? [0, 1, -1, 2, -2] : [0, 1, -1];
+    for (const d of dirs) {
       const h = normAngle(this.heading + d * step);
       const n = nextCell(this.board, this.snake[0], h);
       if (this.blocked(n)) continue;
